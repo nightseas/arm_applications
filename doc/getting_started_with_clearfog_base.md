@@ -6,6 +6,11 @@ This is a very simple guide, or note actually, reviewing the steps required to g
 
 The reason why I'm writing this is because the crude documents of Solid-run. And on the Armbian official download page for ClearFog, they ask you to look into forum threads and find the way to flash the system image to an eMMC among the discussions. As myself didn't find the answer.
 
+My test environment:
+
+ - ClearFog Base + A388 SoM (with 8GB eMMC)
+ - Armbian 5.30 Debian Jessie Image (Failed to boot with 5.32)
+
 ## Before We Start
 
 ### Prebuilt Armbian Image
@@ -20,17 +25,38 @@ Please choose 'default' images, while the 'next' images are not stable. Notice t
 
 ### Boot Selection
 
-The boot source is select by a 5-bit dip switch (SW1). The processor will detect the status of the switch and boot from the relative source during reset. So to take, reset or power cycle is needed after changing the source effect.
+The boot source is select by a 5-bit dip switch (SW1). The processor will detect the status of the switch and boot from the relative source during reset. So, to take effect, reset or power cycle is needed after changing the source effect.
 
 I have double checked the picture below with A38x datasheet and ClearFog schematics. This works for both ClearFog Base and Pro. White part is the position of the dip and black part is the background.
 
 ![Boot Selection](https://raw.githubusercontent.com/nightseas/arm_applications/master/pic/clearfog_base_boot_sel.jpg)
 
+We can take a look at the details (skip this part if you are not interested). Here's a list of all the GPIOs that involved in boot selection.
+
+|   GPIO        |   Function    |   Register:Bit    |
+|   ---         |   ---         |   ---             |
+|   MPP7        |   Boot0       |   0x18600:4       |
+|   MPP8        |   Boot1       |   0x18600:5       |
+|   MPP9        |   Boot2       |   0x18600:6       |
+|   MPP57       |   Boot3       |   0x18600:7       |
+|   MPP42       |   Boot4       |   0x18600:8       |
+|   MPP56       |   Boot5       |   0x18600:9       |
+
+In Marvell's document, I found the meanings of the config, in the format: 
+
+Config code ( Logic level of Boot[5:0] -> Dip-switch status 0=off, 1=on): Descriptions.
+
+- 0x36 (11_0110 -> 0_0000): Default. Internal pull-up/down in the processor.
+- 0x28 (10_1000 -> 1_1110): UART0, mapped to MPP[1:0], USB-to-UART.
+- 0x2A (10_1010 -> 1_1100): SATA0, mapped to Serdes0, M.2 SSD
+- 0x31 (11_0001 -> 0_0111): SDIO0, mapped to MPP[40:37,28:24,21], eMMC on SoM or Micron SD slot on carrier board
+- 0x34 (11_0100 -> 0_0010): SPI1, 24-bit addr NOR, mapped to MPP[59:56], SPI Flash on SoM
+
 ## Boot from Micro SD Card
 
 This is the easiest way to make things done, only if your A38x SoM ordered from Solid-Run doesn't contain an eMMC flash.
 
-Uncompress the downloaded archive and write it to the Micro SD card, use [Etcher](https://www.etcher.io/) on any OS, or dd on Linux if you like (sdX stands for your card):
+Uncompress the downloaded archive and write it to the Micro SD card, use [Etcher](https://www.etcher.io/) on any OS, or dd on Linux if you like (sdX, such as sdc, stands for your card):
 
 ```sh
 sudo dd if=./your-image-file of=/dev/sdX bs=4M
@@ -48,10 +74,10 @@ Before talking about eMMC boot you need to know how to boot from UART interface.
 
 Connect the USB serial port of ClearFog Base your PC. Configure the dip switch to boot from UART.
 
-Use this [serial download script](https://github.com/nightseas/arm_applications/blob/master/script/clearbase-download-serial.sh) from Solid-Run to load a special U-Boot  binary to the board with Xmodem protocol. 
+Use this [serial download script](https://github.com/nightseas/arm_applications/blob/master/script/clearbase-download-serial.sh) from Solid-Run to load a special U-Boot  binary to the board with Xmodem protocol (in my experiment, it doesn't matter I choose u-boot-uart.mmc, u-boot-uart.sata or u-boot-uart.flash). 
 
 ```sh
-./clearbase-download-serial.sh /dev/ttyUSB0 ???uboot-uart.mmc
+./clearbase-download-serial.sh /dev/ttyUSB0 u-boot-uart.mmc
 ```
 
 Run the script and power on the board. After loading, you can stop the boot sequence and access U-Boot CLI.
@@ -62,7 +88,7 @@ Run the script and power on the board. After loading, you can stop the boot sequ
 The U-Boot binary is stored in the Armbian image. Located at:
 
 ```
-/usr/lib/linux-uboot-?????/uboot-uart.????
+/usr/lib/linux-u-boot-clearfogbase_5.30_armhf/
 ```
 
 There are two ways to get the binary out:
@@ -87,7 +113,7 @@ run usbboot
 After login to Linux, get the Armbian image to your board from network (like FTP or SFTP), or copy from another USB disk. Then write the image to eMMC (before that you may need to insert a SD card to the card slot to let the system find the eMMC, due to a software bug).
 
 ```
-sudo dd if=./your-image-file of=/dev/emmcblk0 bs=4M
+sudo dd if=./your-image-file of=/dev/mmcblk0 bs=4M
 ```
 
 Mount the rootfs partition on eMMC and edit armbianEnv.txt to fix that eMMC detection bug. Change the line 'emmc_fix=off' to 'emmc_fix=on', or add a new line if emmc_fix not exist:
@@ -112,17 +138,17 @@ Boot to Linux from any source (SD, eMMC or USB), copy Armbian image to your boar
 sudo dd if=./your-image-file of=/dev/sdX bs=4M
 ```
 
-Then write a the U-Boot binary for SATA to the reserve area on the SSD. The address is the second 512-byte logic sector on SSD where the Marvell main header should located at (again checked both Armbian image and Marvell doc).
+Then write a specific U-Boot binary for SATA to the reserve area on the SSD. The address is the second 512-byte logic sector on SSD where the Marvell main header should be located at (again checked both Armbian image and Marvell doc).
 
 ```sh
-sudo dd if=/usr/lib/linux-uboot-????/uboot.sata???? of=/dev/sdX bs=512 seek=1
+sudo dd if=/usr/lib/linux-u-boot-clearfogbase_5.30_armhf/u-boot.sata of=/dev/sdX bs=512 seek=1
 ```
 
 ## Boot from SPI Flash
 
-You can't boot the entire Armbian image from a SPI flash. Just due to the limitation of size (only 4M Bytes on my A388 SoM). But perhaps it is enough for a customized Linux with ramdisk rootfs.
-Boot to Linux and write the relative U-Boot binary to the SPI Flash.
+You can't boot the entire Armbian image from a SPI flash. Just due to the limitation of size (only 4M Bytes on my A388 SoM). But perhaps it is enough for a customized Linux with RAM disk rootfs.
+Boot to Linux and write the relative U-Boot binary to the SPI Flash, which is abstracted to a MTD block device.
 
 ```sh
-sudo dd if=/usr/lib/linux-uboot-????/uboot.flash???? of=/dev/mtdblk0????
+sudo dd if=/usr/lib/linux-u-boot-clearfogbase_5.30_armhf/u-boot.flash of=/dev/mtdblock0
 ```
