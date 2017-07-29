@@ -9,7 +9,8 @@ The reason why I'm writing this is because the crude documents of Solid-run. And
 My test environment:
 
  - ClearFog Base + A388 SoM (with 8GB eMMC)
- - Armbian 5.30 Debian Jessie Image (Failed to boot with 5.32)
+ - Armbian 5.32 Debian Jessie or Ubuntu Xenial Image (Also did verification on 5.30)
+ - Host PC: Xeon X5650 workstation + Ubuntu Mate 16.04
 
 ## Before We Start
 
@@ -56,7 +57,7 @@ Config code ( Logic level of Boot[5:0] -> Dip-switch status 0=off, 1=on): Descri
 
 This is the easiest way to make things done, only if your A38x SoM ordered from Solid-Run doesn't contain an eMMC flash.
 
-Uncompress the downloaded archive and write it to the Micro SD card, use [Etcher](https://www.etcher.io/) on any OS, or dd on Linux if you like (sdX, such as sdc, stands for your card):
+Uncompress the downloaded archive and write it to the Micro SD card, use [Etcher](https://www.etcher.io/) on any OS, or dd on Linux if you insist (sdX, such as sdc, stands for your card):
 
 ```sh
 sudo dd if=./your-image-file of=/dev/sdX bs=4M
@@ -88,7 +89,7 @@ Run the script and power on the board. After loading, you can stop the boot sequ
 The U-Boot binary is stored in the Armbian image. Located at:
 
 ```
-/usr/lib/linux-u-boot-clearfogbase_5.30_armhf/
+/usr/lib/linux-u-boot-clearfogbase_5.32_armhf/
 ```
 
 There are two ways to get the binary out:
@@ -116,7 +117,7 @@ After login to Linux, get the Armbian image to your board from network (like FTP
 sudo dd if=./your-image-file of=/dev/mmcblk0 bs=4M
 ```
 
-Mount the rootfs partition on eMMC and edit armbianEnv.txt to fix that eMMC detection bug. Change the line 'emmc_fix=off' to 'emmc_fix=on', or add a new line if emmc_fix not exist:
+Mount the rootfs partition on eMMC and edit armbianEnv.txt to fix that eMMC detection bug. Change the line 'emmc_fix=off' to 'emmc_fix=on', or add a new line if emmc_fix does not exist:
 
 ```sh
 sudo mount /dev/mmcblk0p1 /mnt
@@ -125,6 +126,22 @@ sudo nano /mnt/boot/armbianEnv.txt
 sudo umount /mnt
 sudo poweroff
 ```
+
+There's a special thing for eMMC, which is the boot partition. It’s an independent flash space in eMMC and can be accessed from U-Boot or Linux, usually shows up as two block devices /dev/mmcblk0boot0 and /dev/mmcblk0boot1. The Marvell BootROM will look for U-Boot images in those areas. So before reboot to eMMC, you should write the bootloader to the boot partitions.
+
+The boot partitions of eMMC have write protection (WP), and you need to disable the WP, then write the MMC U-Boot to both partitions (it’s called redundancy). Also, It's a good habit to recover the WP after modifications.
+
+```sh
+echo 0 > /sys/block/mmcblk0boot0/force_ro
+echo 0 > /sys/block/mmcblk0boot1/force_ro
+
+sudo dd if=/usr/lib/linux-u-boot-clearfogbase_5.32_armhf/u-boot.mmc of=/dev/mmcblk0boot0
+sudo dd if=/usr/lib/linux-u-boot-clearfogbase_5.32_armhf/u-boot.mmc of=/dev/mmcblk0boot1
+
+echo 1 > /sys/block/mmcblk0boot0/force_ro
+echo 1 > /sys/block/mmcblk0boot1/force_ro
+```
+
 
 ### Finally! Boot from eMMC
 
@@ -141,7 +158,7 @@ sudo dd if=./your-image-file of=/dev/sdX bs=4M
 Then write a specific U-Boot binary for SATA to the reserve area on the SSD. The address is the second 512-byte logic sector on SSD where the Marvell main header should be located at (again checked both Armbian image and Marvell doc).
 
 ```sh
-sudo dd if=/usr/lib/linux-u-boot-clearfogbase_5.30_armhf/u-boot.sata of=/dev/sdX bs=512 seek=1
+sudo dd if=/usr/lib/linux-u-boot-clearfogbase_5.32_armhf/u-boot.sata of=/dev/sdX bs=512 seek=1
 ```
 
 ## Boot from SPI Flash
@@ -150,5 +167,5 @@ You can't boot the entire Armbian image from a SPI flash. Just due to the limita
 Boot to Linux and write the relative U-Boot binary to the SPI Flash, which is abstracted to a MTD block device.
 
 ```sh
-sudo dd if=/usr/lib/linux-u-boot-clearfogbase_5.30_armhf/u-boot.flash of=/dev/mtdblock0
+sudo dd if=/usr/lib/linux-u-boot-clearfogbase_5.32_armhf/u-boot.flash of=/dev/mtdblock0
 ```
