@@ -75,7 +75,7 @@ Before talking about eMMC boot you need to know how to boot from UART interface.
 
 Connect the USB serial port of ClearFog Base your PC. Configure the dip switch to boot from UART.
 
-Use this [serial download script](https://github.com/nightseas/arm_applications/blob/master/script/clearbase-download-serial.sh) from Solid-Run to load a special U-Boot  binary to the board with Xmodem protocol (in my experiment, it doesn't matter I choose u-boot-uart.mmc, u-boot-uart.sata or u-boot-uart.flash). 
+Use this [serial download script](https://github.com/nightseas/arm_applications/blob/master/script/clearfogbase-download-serial.sh) from Solid-Run to load a special U-Boot  binary to the board with Xmodem protocol (in my experiment, it doesn't matter I choose u-boot-uart.mmc, u-boot-uart.sata or u-boot-uart.flash). 
 
 ```sh
 ./clearbase-download-serial.sh /dev/ttyUSB0 u-boot-uart.mmc
@@ -142,6 +142,9 @@ echo 1 > /sys/block/mmcblk0boot0/force_ro
 echo 1 > /sys/block/mmcblk0boot1/force_ro
 ```
 
+And here's a script for lazy guys (remember to change the Armbian image version).
+
+[eMMC and SPI flash download script](https://github.com/nightseas/arm_applications/blob/master/script/clearfogbase-download-emmc-spi.sh)
 
 ### Finally! Boot from eMMC
 
