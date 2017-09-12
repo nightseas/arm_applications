@@ -44,7 +44,7 @@ the repository.
 3.  Add Docker's official GPG key:
 
     ```bash
-    $ curl -fsSL {{ download-url-base }}/gpg | sudo apt-key add -
+    $ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
     ```
 
     Verify that the key fingerprint is `9DC8 5822 9FC7 DD38 854A  E2D8 8D81 803C 0EBF CD88`.
@@ -62,7 +62,7 @@ the repository.
 
     ```bash
     $ sudo add-apt-repository \
-       "deb [arch=armhf] {{ download-url-base }} \
+       "deb [arch=armhf] https://download.docker.com/linux/ubuntu \
        $(lsb_release -cs) \
        stable"
     ```
@@ -89,7 +89,7 @@ the repository.
     ```bash
     $ apt-cache madison docker-ce
 
-    docker-ce | {{ minor-version }}.0~ce-0~ubuntu | {{ download-url-base }} xenial/stable amd64 Packages
+    docker-ce | 17.06.0~ce-0~ubuntu | https://download.docker.com/linux/ubuntu xenial/stable armhf Packages
     ```
 
     The contents of the list depend upon which repositories are enabled. Choose
@@ -148,7 +148,7 @@ To create the `docker` group and add your user:
 4.  Verify that you can run `docker` commands without `sudo`.
 
     ```bash
-    $ docker run armv7/armhf-ubuntu echo 'hello-world'
+    $ docker run armhf/hello-world
     ```
 
     This command downloads a test image and runs it in a container. When the
