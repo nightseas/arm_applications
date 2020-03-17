@@ -30,7 +30,7 @@ The boot source is select by a 5-bit dip switch (SW1). The processor will detect
 
 I have double checked the picture below with A38x datasheet and ClearFog schematics. This works for both ClearFog Base and Pro. White part is the position of the dip and black part is the background.
 
-![Boot Selection](https://raw.githubusercontent.com/nightseas/arm_applications/master/pic/clearfog_base_boot_sel.jpg)
+![Boot Selection](pic/clearfog_base_boot_sel.jpg?raw=true)
 
 We can take a look at the details (skip this part if you are not interested). Here's a list of all the GPIOs that involved in boot selection.
 
